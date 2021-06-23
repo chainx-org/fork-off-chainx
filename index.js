@@ -8,13 +8,13 @@ const { HttpProvider } = require('@polkadot/rpc-provider');
 const { xxhashAsHex } = require('@polkadot/util-crypto');
 const execFileSync = require('child_process').execFileSync;
 const execSync = require('child_process').execSync;
-const binaryPath = path.join(__dirname, 'data', 'binary');
-const wasmPath = path.join(__dirname, 'data', 'runtime.wasm');
-const schemaPath = path.join(__dirname, 'data', 'schema.json');
-const hexPath = path.join(__dirname, 'data', 'runtime.hex');
-const originalSpecPath = path.join(__dirname, 'data', 'genesis.json');
-const forkedSpecPath = path.join(__dirname, 'data', 'fork.json');
-const storagePath = path.join(__dirname, 'data', 'storage.json');
+const binaryPath = path.join(__dirname, 'chainx-fork', 'binary');
+const wasmPath = path.join(__dirname, 'chainx-fork', 'runtime.wasm');
+const schemaPath = path.join(__dirname, 'chainx-fork', 'schema.json');
+const hexPath = path.join(__dirname, 'chainx-fork', 'runtime.hex');
+const originalSpecPath = path.join(__dirname, 'chainx-fork', 'genesis.json');
+const forkedSpecPath = path.join(__dirname, 'chainx-fork', 'fork.json');
+const storagePath = path.join(__dirname, 'chainx-fork', 'storage.json');
 
 // Using http endpoint since substrate's Ws endpoint has a size limit.
 const provider = new HttpProvider(process.env.HTTP_RPC_ENDPOINT || 'http://localhost:9933')
@@ -39,7 +39,10 @@ const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_cla
  * For module hashing, do it via xxhashAsHex,
  * e.g. console.log(xxhashAsHex('System', 128)).
  */
-let prefixes = ['0x26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da9' /* System.Account */];
+// let prefixes = ['0x26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da9' /* System.Account */];
+let prefixes = [];
+// const skippedModulesPrefix = ['System', 'Session', 'Babe', 'Grandpa', 'GrandpaFinality', 'FinalityTracker'];
+// const skippedModulesPrefix = ['System', 'Session', 'Babe', 'Grandpa', 'FinalityTracker'];
 const skippedModulesPrefix = ['System', 'Session', 'Babe', 'Grandpa', 'GrandpaFinality', 'FinalityTracker', 'Authorship'];
 
 async function main() {
@@ -69,19 +72,19 @@ async function main() {
     });
   }
 
-  if (fs.existsSync(storagePath)) {
-    console.log(chalk.yellow('Reusing cached storage. Delete ./data/storage.json and rerun the script if you want to fetch latest storage'));
-  } else {
-    // Download state of original chain
-    console.log(chalk.green('Fetching current state of the live chain. Please wait, it can take a while depending on the size of your chain.'));
-    progressBar.start(totalChunks, 0);
-    const stream = fs.createWriteStream(storagePath, { flags: 'a' });
-    stream.write("[");
-    await fetchChunks("0x", chunksLevel, stream);
-    stream.write("]");
-    stream.end();
-    progressBar.stop();
-  }
+  // if (fs.existsSync(storagePath)) {
+  //   console.log(chalk.yellow('Reusing cached storage. Delete ./data/storage.json and rerun the script if you want to fetch latest storage'));
+  // } else {
+  //   // Download state of original chain
+  //   console.log(chalk.green('Fetching current state of the live chain. Please wait, it can take a while depending on the size of your chain.'));
+  //   progressBar.start(totalChunks, 0);
+  //   const stream = fs.createWriteStream(storagePath, { flags: 'a' });
+  //   stream.write("[");
+  //   await fetchChunks("0x", chunksLevel, stream);
+  //   stream.write("]");
+  //   stream.end();
+  //   progressBar.stop();
+  // }
 
   const metadata = await api.rpc.state.getMetadata();
   // Populate the prefixes array
@@ -96,7 +99,7 @@ async function main() {
 
   // Generate chain spec for original and forked chains
   execSync(binaryPath + ' build-spec --raw > ' + originalSpecPath);
-  execSync(binaryPath + ' build-spec --dev --raw > ' + forkedSpecPath);
+  execSync(binaryPath + ' build-spec --chain fork --raw > ' + forkedSpecPath);
 
   let storage = JSON.parse(fs.readFileSync(storagePath, 'utf8'));
   let originalSpec = JSON.parse(fs.readFileSync(originalSpecPath, 'utf8'));
@@ -105,7 +108,7 @@ async function main() {
   // Modify chain name and id
   forkedSpec.name = originalSpec.name + '-fork';
   forkedSpec.id = originalSpec.id + '-fork';
-  forkedSpec.protocolId = originalSpec.protocolId;
+  forkedSpec.protocolId = originalSpec.protocolId + '-fork';
 
   // Grab the items to be moved, then iterate through and insert into storage
   storage
@@ -133,8 +136,8 @@ async function fetchChunks(prefix, levelsRemaining, stream) {
   if (levelsRemaining <= 0) {
     const pairs = await provider.send('state_getPairs', [prefix]);
     if (pairs.length > 0) {
-      separator ? stream.write(",") : separator = true;
-      stream.write(JSON.stringify(pairs).slice(1, -1));
+      separator?stream.write(","):separator = true;
+      stream.write(JSON.stringify(pairs).slice(1,-1));
     }
     progressBar.update(++chunksFetched);
     return;
@@ -144,12 +147,12 @@ async function fetchChunks(prefix, levelsRemaining, stream) {
   if (process.env.QUICK_MODE && levelsRemaining == 1) {
     let promises = [];
     for (let i = 0; i < 256; i++) {
-      promises.push(fetchChunks(prefix + i.toString(16).padStart(2, "0"), levelsRemaining - 1, stream));
+      promises.push(fetchChunks(prefix + i.toString(16).padStart(2*chunksLevel, "0"), levelsRemaining - 1, stream));
     }
     await Promise.all(promises);
   } else {
     for (let i = 0; i < 256; i++) {
-      await fetchChunks(prefix + i.toString(16).padStart(2, "0"), levelsRemaining - 1, stream);
+      await fetchChunks(prefix + i.toString(16).padStart(2*chunksLevel, "0"), levelsRemaining - 1, stream);
     }
   }
 }
