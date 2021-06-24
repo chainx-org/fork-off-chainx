@@ -43,7 +43,7 @@ const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_cla
 let prefixes = [];
 // const skippedModulesPrefix = ['System', 'Session', 'Babe', 'Grandpa', 'GrandpaFinality', 'FinalityTracker'];
 // const skippedModulesPrefix = ['System', 'Session', 'Babe', 'Grandpa', 'FinalityTracker'];
-const skippedModulesPrefix = ['System', 'Session', 'Babe', 'Grandpa', 'GrandpaFinality', 'FinalityTracker', 'Authorship'];
+const skippedModulesPrefix = ['System', 'Session', 'Babe', 'Grandpa', 'GrandpaFinality', 'FinalityTracker', 'Authorship', 'XStaking'];
 
 async function main() {
   if (!fs.existsSync(binaryPath)) {

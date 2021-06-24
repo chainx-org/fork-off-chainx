@@ -5,7 +5,7 @@
     "base-path": "hacpy",
     "log-dir": "./log/hacpy",
     "ws-max-connections": 10000,
-    "keystore-path": "./keystore",
+    "keystore-path": "./keys/hacpy1/chains/chainx/keystore",
     "force-authoring": true,
     "rpc-cors": "all",
     "execution": "NativeElseWasm",
