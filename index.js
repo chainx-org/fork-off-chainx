@@ -47,35 +47,40 @@ const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_cla
  */
 // let prefixes = ['0x26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da9' /* System.Account */];
 const PhragmenElection = '0xe2e62dd81c48a88f73b6f6463555fd8e'
-
 const ElectionPhragmen = '0x6112a464bbca6c1759f131dfa7bb5d06'
 const Elections = '0x7cda3cfa86b349fdafce4979b197118f'
 const ElectionsMembers = '0x7cda3cfa86b349fdafce4979b197118fba7fb8745735dc3be2a2c61a72c39e78'
+const GrandpaFinality = '0x2371e21684d2fae99bcb4d579242f74a'
+const Grandpa = '0x5f9cc45b7a00c5899361e1c6099678dc'
 
-let prefixes = [
-  Elections,
-  PhragmenElection,
-  ElectionPhragmen
+// /*
+//  * OnRuntime_Upgrade config(confilct with Testnet config)
+//  */
+// // Specify the modules to be migrated
+// let prefixes = [Elections, ElectionPhragmen, GrandpaFinality];
+// // replace storage prefix
+// let replace_prefix = [
+//   [Elections, PhragmenElection],
+//   [ElectionPhragmen, PhragmenElection],
+//   [GrandpaFinality, Grandpa]
+// ]
+// // drop old storage
+// const skippedModulesPrefix = [];
+
+/*
+ * Testnet config(confilct with OnRuntime_Upgrade config)
+ */
+// Specify the modules to be migrated
+let prefixes = [];
+// replace storage prefix
+let replace_prefix = []
+// drop old storage
+const skippedModulesPrefix = [
+  'System', 'Session', 'Babe', 'FinalityTracker', 'Grandpa', 'GrandpaFinality', 'Authorship' , 'XStaking'
 ];
 
-// replace storage prefix
-let replace_prefix = [
-  [Elections, PhragmenElection],
-  [ElectionPhragmen, PhragmenElection]
-]
-
-// const skippedModulesPrefix = ['System', 'Session', 'Babe', 'Grandpa', 'GrandpaFinality', 'FinalityTracker'];
-// const skippedModulesPrefix = ['System', 'Session', 'Babe', 'Grandpa', 'FinalityTracker'];
-// const skippedModulesPrefix = ['Elections', 'System', 'Session', 'Babe', 'Grandpa', 'GrandpaFinality', 'FinalityTracker', 'Authorship', /* 'XStaking' */];
-const skippedModulesPrefix = ['Elections', 'System', 'Session', 'Babe', 'Grandpa', 'GrandpaFinality', 'FinalityTracker', 'Authorship', 'XStaking'];
-
 async function main() {
-  console.log(xxhashAsHex('PhragmenElection', 128))
-  console.log(xxhashAsHex('RunnersUp', 128))
-  console.log(xxhashAsHex('Candidates', 128))
-  console.log(xxhashAsHex('ElectionRounds', 128))
-  console.log(xxhashAsHex('Voting', 128))
-
+  // console.log("PhragmenElection " + xxhashAsHex('PhragmenElection', 128))
   if (!fs.existsSync(binaryPath)) {
     console.log(chalk.red('Binary missing. Please copy the binary of your substrate node to the data folder and rename the binary to "binary"'));
     process.exit(1);
