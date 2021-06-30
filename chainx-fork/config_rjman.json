@@ -18,7 +18,7 @@
     "rpc-methods": "Unsafe",
     "pruning": "archive",
     "bootnodes": [
-        "/ip4/192.168.1.231/tcp/20333/p2p/12D3KooWLmGnpNgnkb4kK18zzauLqVGt1vygWerdkkP1DdoGkMKh"
+        "/ip4/192.168.1.231/tcp/20333/p2p/12D3KooWSwQtxH7uz9otEGth7GkbUEmSZD3d4CkAKkYrJbde1XyU"
     ]
 }
 

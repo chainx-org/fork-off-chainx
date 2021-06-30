@@ -3,9 +3,15 @@ const path = require('path');
 const chalk = require('chalk');
 const cliProgress = require('cli-progress');
 require("dotenv").config();
-const { ApiPromise } = require('@polkadot/api');
-const { HttpProvider } = require('@polkadot/rpc-provider');
-const { xxhashAsHex } = require('@polkadot/util-crypto');
+const {
+  ApiPromise
+} = require('@polkadot/api');
+const {
+  HttpProvider
+} = require('@polkadot/rpc-provider');
+const {
+  xxhashAsHex
+} = require('@polkadot/util-crypto');
 const execFileSync = require('child_process').execFileSync;
 const execSync = require('child_process').execSync;
 const binaryPath = path.join(__dirname, 'chainx-fork', 'binary');
@@ -40,12 +46,36 @@ const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_cla
  * e.g. console.log(xxhashAsHex('System', 128)).
  */
 // let prefixes = ['0x26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da9' /* System.Account */];
-let prefixes = [];
+const PhragmenElection = '0xe2e62dd81c48a88f73b6f6463555fd8e'
+
+const ElectionPhragmen = '0x6112a464bbca6c1759f131dfa7bb5d06'
+const Elections = '0x7cda3cfa86b349fdafce4979b197118f'
+const ElectionsMembers = '0x7cda3cfa86b349fdafce4979b197118fba7fb8745735dc3be2a2c61a72c39e78'
+
+let prefixes = [
+  Elections,
+  PhragmenElection,
+  ElectionPhragmen
+];
+
+// replace storage prefix
+let replace_prefix = [
+  [Elections, PhragmenElection],
+  [ElectionPhragmen, PhragmenElection]
+]
+
 // const skippedModulesPrefix = ['System', 'Session', 'Babe', 'Grandpa', 'GrandpaFinality', 'FinalityTracker'];
 // const skippedModulesPrefix = ['System', 'Session', 'Babe', 'Grandpa', 'FinalityTracker'];
-const skippedModulesPrefix = ['System', 'Session', 'Babe', 'Grandpa', 'GrandpaFinality', 'FinalityTracker', 'Authorship', 'XStaking'];
+// const skippedModulesPrefix = ['Elections', 'System', 'Session', 'Babe', 'Grandpa', 'GrandpaFinality', 'FinalityTracker', 'Authorship', /* 'XStaking' */];
+const skippedModulesPrefix = ['Elections', 'System', 'Session', 'Babe', 'Grandpa', 'GrandpaFinality', 'FinalityTracker', 'Authorship', 'XStaking'];
 
 async function main() {
+  console.log(xxhashAsHex('PhragmenElection', 128))
+  console.log(xxhashAsHex('RunnersUp', 128))
+  console.log(xxhashAsHex('Candidates', 128))
+  console.log(xxhashAsHex('ElectionRounds', 128))
+  console.log(xxhashAsHex('Voting', 128))
+
   if (!fs.existsSync(binaryPath)) {
     console.log(chalk.red('Binary missing. Please copy the binary of your substrate node to the data folder and rename the binary to "binary"'));
     process.exit(1);
@@ -62,9 +92,14 @@ async function main() {
   console.log(chalk.green('We are intentionally using the HTTP endpoint. If you see any warnings about that, please ignore them.'));
   if (!fs.existsSync(schemaPath)) {
     console.log(chalk.yellow('Custom Schema missing, using default schema.'));
-    api = await ApiPromise.create({ provider });
+    api = await ApiPromise.create({
+      provider
+    });
   } else {
-    const { types, rpc } = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+    const {
+      types,
+      rpc
+    } = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
     api = await ApiPromise.create({
       provider,
       types,
@@ -72,30 +107,33 @@ async function main() {
     });
   }
 
-  // if (fs.existsSync(storagePath)) {
-  //   console.log(chalk.yellow('Reusing cached storage. Delete ./data/storage.json and rerun the script if you want to fetch latest storage'));
-  // } else {
-  //   // Download state of original chain
-  //   console.log(chalk.green('Fetching current state of the live chain. Please wait, it can take a while depending on the size of your chain.'));
-  //   progressBar.start(totalChunks, 0);
-  //   const stream = fs.createWriteStream(storagePath, { flags: 'a' });
-  //   stream.write("[");
-  //   await fetchChunks("0x", chunksLevel, stream);
-  //   stream.write("]");
-  //   stream.end();
-  //   progressBar.stop();
-  // }
+  if (fs.existsSync(storagePath)) {
+    console.log(chalk.yellow('Reusing cached storage. Delete ./data/storage.json and rerun the script if you want to fetch latest storage'));
+  } else {
+    // Download state of original chain
+    console.log(chalk.green('Fetching current state of the live chain. Please wait, it can take a while depending on the size of your chain.'));
+    progressBar.start(totalChunks, 0);
+    const stream = fs.createWriteStream(storagePath, { flags: 'a' });
+    stream.write("[");
+    await fetchChunks("0x", chunksLevel, stream);
+    stream.write("]");
+    stream.end();
+    progressBar.stop();
+  }
 
   const metadata = await api.rpc.state.getMetadata();
   // Populate the prefixes array
   const modules = JSON.parse(metadata.asLatest.modules);
+  console.log("upstream metadata storage::::::::::::::::::")
   modules.forEach((module) => {
     if (module.storage) {
+        console.log(module.storage.prefix)
       if (!skippedModulesPrefix.includes(module.storage.prefix)) {
         prefixes.push(xxhashAsHex(module.storage.prefix, 128));
       }
     }
   });
+  console.log("::::::::::::::::::upstream metadata storage")
 
   // Generate chain spec for original and forked chains
   execSync(binaryPath + ' build-spec --raw > ' + originalSpecPath);
@@ -110,11 +148,26 @@ async function main() {
   forkedSpec.id = originalSpec.id + '-fork';
   forkedSpec.protocolId = originalSpec.protocolId + '-fork';
 
+  console.log(prefixes)
+
   // Grab the items to be moved, then iterate through and insert into storage
   storage
     .filter((i) => prefixes.some((prefix) => i[0].startsWith(prefix)))
-    .forEach(([key, value]) => (forkedSpec.genesis.raw.top[key] = value));
-
+    .forEach(([key, value]) => {
+      replace_prefix.forEach(([orgin, replaced]) => {
+        if (key.startsWith(orgin)) {
+          console.log("------------")
+          console.log("replace prefix ", orgin, " to ", replaced)
+          // console.log("find replace_key: " + key)
+          key = key.replace(orgin, replaced);
+          // console.log("after replace: " + key)
+          console.log("------------")
+        }
+        forkedSpec.genesis.raw.top[key] = value;
+      })
+    })
+  // Add replaced prefix/value
+  // forkedSpec.genesis.raw.top[replacePrefix[1]] = forkedSpec.genesis.raw.top[replacePrefix[0]]
   // Delete System.LastRuntimeUpgrade to ensure that the on_runtime_upgrade event is triggered
   delete forkedSpec.genesis.raw.top['0x26aa394eea5630e07c48ae0c9558cef7f9cce9c888469bb1a0dceaa129672ef8'];
 
@@ -136,8 +189,8 @@ async function fetchChunks(prefix, levelsRemaining, stream) {
   if (levelsRemaining <= 0) {
     const pairs = await provider.send('state_getPairs', [prefix]);
     if (pairs.length > 0) {
-      separator?stream.write(","):separator = true;
-      stream.write(JSON.stringify(pairs).slice(1,-1));
+      separator ? stream.write(",") : separator = true;
+      stream.write(JSON.stringify(pairs).slice(1, -1));
     }
     progressBar.update(++chunksFetched);
     return;
@@ -147,12 +200,12 @@ async function fetchChunks(prefix, levelsRemaining, stream) {
   if (process.env.QUICK_MODE && levelsRemaining == 1) {
     let promises = [];
     for (let i = 0; i < 256; i++) {
-      promises.push(fetchChunks(prefix + i.toString(16).padStart(2*chunksLevel, "0"), levelsRemaining - 1, stream));
+      promises.push(fetchChunks(prefix + i.toString(16).padStart(2 * chunksLevel, "0"), levelsRemaining - 1, stream));
     }
     await Promise.all(promises);
   } else {
     for (let i = 0; i < 256; i++) {
-      await fetchChunks(prefix + i.toString(16).padStart(2*chunksLevel, "0"), levelsRemaining - 1, stream);
+      await fetchChunks(prefix + i.toString(16).padStart(2 * chunksLevel, "0"), levelsRemaining - 1, stream);
     }
   }
 }
