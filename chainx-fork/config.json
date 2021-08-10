@@ -1,0 +1,23 @@
+{
+    "chain": "fork.json",
+    "validator": true,
+    "name": "hacpy",
+    "base-path": "hacpy",
+    "log-dir": "./log/hacpy",
+    "ws-max-connections": 10000,
+    "keystore-path": "./keys/hacpy1/chains/chainx/keystore",
+    "force-authoring": true,
+    "rpc-cors": "all",
+    "execution": "NativeElseWasm",
+    "rpc-port": 9086,
+    "ws-port": 9087,
+    "port": 20333,
+    "log": "afg=debug,runtime=debug",
+    "rpc-external": true,
+    "ws-external": true,
+    "rpc-methods": "Unsafe",
+    "pruning": "archive",
+    "bootnodes": [
+    ]
+}
+
